@@ -3,7 +3,11 @@
 #include "motor/rm_motor/rm_motor.hpp"
 #include "tools/pid/pid.hpp"
 #include "io/can/can.hpp"
-#include "cstring"
+#include <cstring>
+#include "tools/mahony/mahony.hpp"
+
+extern sp::Mahony imu;
+
 // C板
 sp::DBus remote(&huart3);
 sp::RM_Motor motor6020_1(1, sp::RM_Motors::GM6020); // 一个电机ID为1, 电流控制模式的6020
@@ -15,10 +19,44 @@ sp::PID pid6020_2(0.002f, 8.0f, 0.0f, 0.3f, sp::GM6020_MAX_TORQUE, 0.5f, 1.0f, t
 sp::CAN can1(&hcan1);
 const float RESET_ANGLE = 0.0f; // 复位基准角度：C板箭头基准
 
+static float yaw_raw_last = 0.0f; // 上一帧原始imu.yaw [-π,π]
+static float yaw_unwrap = 0.0f;   // 解卷绕后连续yaw(rad)，无±π跳变
+
+static float yaw_zero = 0.0f;             // 联动参考：解卷绕yaw零点
+static float encA_zero = 0.0f;            // 联动参考：A电机零点角度
+static float encB_zero = 0.0f;            // 联动参考：B电机零点角度
+const float ENC_NOISE_THRESHOLD = 0.002f; // 弧度，A电机变化阈值，过滤编码器噪声
+
+/**
+ * @brief yaw角度解卷绕函数，把[-π,π]跳变转为连续角度
+ * @param raw_yaw imu.yaw原始值，范围[-M_PI,M_PI]
+ * @return float 连续无跳变yaw(rad)
+ */
+static float unwrap_yaw(float raw_yaw)
+{
+  const float PI = 3.1415926535f;
+  float delta = raw_yaw - yaw_raw_last;
+
+  // 检测正负π跳变，补偿2π
+  if (delta > PI)
+    delta -= 2.0f * PI;
+  else if (delta < -PI)
+    delta += 2.0f * PI;
+
+  yaw_unwrap += delta;
+  yaw_raw_last = raw_yaw;
+  return yaw_unwrap;
+}
+
 extern "C" void motor_control_task(void *arg)
 {
-  sp::DBusSwitchMode sw_r;
+  sp::DBusSwitchMode sw_r; // 右拨杆
+  sp::DBusSwitchMode sw_l; // 左拨杆
 
+  float yaw_now;
+  float encA_now, encB_now;
+  float delta_yaw;
+  float ratio_B;
   while (1)
   {
     // 安全读取DBus遥控器数据
@@ -51,14 +89,58 @@ extern "C" void motor_control_task(void *arg)
 
     else if (sw_r == sp::DBusSwitchMode::MID)
     {
-      // 中档：预留姿态联动，暂时先置0力矩，后面再写
-      motor6020_1.cmd(0.0f);
-      motor6020_2.cmd(0.0f);
-    }
+      // 1.左拨杆选择B电机联动比例 C板:B电机
+      if (sw_l == sp::DBusSwitchMode::DOWN)
+      {
+        ratio_B = 0.5f; // 1 : 0.5
+      }
+      else if (sw_l == sp::DBusSwitchMode::MID)
+      {
+        ratio_B = -1.0f; // 1 : -1 反向
+      }
+      else // sw_l == UP
+      {
+        ratio_B = 3.0f; // 1 : 3
+      }
+      // 2.读取IMU yaw，执行解卷绕，获得连续yaw角度
+      yaw_now = unwrap_yaw(imu.yaw);
 
-    osDelay(2); // 控制周期
+      // 3.读取两台电机当前输出轴角度(rad，RM_Motor多圈连续)
+      encA_now = motor6020_1.angle;
+      encB_now = motor6020_2.angle;
+
+      // 4.【核心逻辑】手动转动A电机：刷新整套联动零点
+      float delta_encA = encA_now - encA_zero;
+      if (fabsf(delta_encA) > ENC_NOISE_THRESHOLD)
+      {
+        // A电机被手动掰动，更新全部联动参考零点
+        yaw_zero = yaw_now;
+        encA_zero = encA_now;
+        encB_zero = encB_now;
+        // 清空PID积分，防止手动掰电机时积分累积
+        pid6020_1.clear();
+        pid6020_2.clear();
+      }
+      // 5.计算C板yaw相对零点的偏移量
+      delta_yaw = yaw_now - yaw_zero;
+
+      // 6.计算两台电机目标角度
+      float targetA = encA_zero + delta_yaw;           // A电机1:1跟随C板yaw偏移
+      float targetB = encB_zero + ratio_B * delta_yaw; // B电机按左拨杆比例跟随
+
+      // 7.位置PID闭环计算输出力矩
+      pid6020_1.calc(targetA, encA_now);
+      pid6020_2.calc(targetB, encB_now);
+
+      // 8.下发力矩指令
+      motor6020_1.cmd(pid6020_1.out);
+      motor6020_2.cmd(pid6020_2.out);
+    }
   }
+
+  osDelay(2); // 控制周期
 }
+
 extern "C" void uart_task()
 {
   remote.request();
@@ -72,7 +154,7 @@ extern "C" void uart_task()
 
 extern "C" void can_send_task(void *arg)
 {
-  while(1)
+  while (1)
   {
     memset(can1.tx_data, 0, sizeof(can1.tx_data));
     motor6020_1.write(can1.tx_data);
