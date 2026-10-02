@@ -47,10 +47,17 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
     applications/led_task.cpp
     applications/buzzer_task.cpp
-    applications/remote_task.cpp
+    applications/dbus_task.cpp
+    applications/imu_task.cpp # <- 添加这一行
+    
     sp_middleware/io/led/led.cpp
     sp_middleware/io/buzzer/buzzer.cpp
+    sp_middleware/io/plotter/plotter.cpp
+    sp_middleware/io/bmi088/bmi088.cpp
+    sp_middleware/tools/mahony/mahony.cpp # <- 添加这一行
+    sp_middleware/tools/gimbal/gimbal.cpp # <- 添加这一行
 )
+
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE

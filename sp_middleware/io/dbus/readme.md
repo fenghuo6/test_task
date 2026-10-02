@@ -1,6 +1,7 @@
 # DBus Demo
 
 新建applications/uart_task.cpp
+
 ```cpp
 #include "cmsis_os.h"
 #include "io/dbus/dbus.hpp"
@@ -40,6 +41,7 @@ extern "C" void HAL_UART_ErrorCallback(UART_HandleTypeDef * huart)
 ```
 
 编辑CMakeLists.txt
+
 ```cmake
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     applications/uart_task.cpp # <- 添加这一行

@@ -50,7 +50,8 @@
 osThreadId defaultTaskHandle;
 osThreadId ledtaskHandle;
 osThreadId buzzertaskHandle;
-osThreadId remotetaskHandle;
+osThreadId dbustaskHandle;
+osThreadId imuaskHandle;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -60,7 +61,8 @@ osThreadId remotetaskHandle;
 void StartDefaultTask(void const * argument);
 extern void led_task(void const * argument);
 extern void buzzer_task(void const * argument);
-extern void remote_task(void const * argument);
+extern void dbus_task(void const * argument);
+extern void imu_task(void const * argument);
 
 extern void MX_USB_DEVICE_Init(void);
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -120,9 +122,13 @@ void MX_FREERTOS_Init(void) {
   osThreadDef(buzzertask, buzzer_task, osPriorityIdle, 0, 128);
   buzzertaskHandle = osThreadCreate(osThread(buzzertask), NULL);
 
-  /* definition and creation of remotetask */
-  osThreadDef(remotetask, remote_task, osPriorityIdle, 0, 128);
-  remotetaskHandle = osThreadCreate(osThread(remotetask), NULL);
+  /* definition and creation of dbustask */
+  osThreadDef(dbustask, dbus_task, osPriorityIdle, 0, 128);
+  dbustaskHandle = osThreadCreate(osThread(dbustask), NULL);
+
+  /* definition and creation of imuask */
+  osThreadDef(imuask, imu_task, osPriorityIdle, 0, 128);
+  imuaskHandle = osThreadCreate(osThread(imuask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
