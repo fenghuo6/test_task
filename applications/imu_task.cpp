@@ -28,6 +28,7 @@ extern "C" void imu_task()
             print_cnt = 0;
             // 顺序：roll,pitch,yaw, ax,ay,az, gx,gy,gz 共9路
             plotter.plot(
+
                 imu.roll, imu.pitch, imu.yaw,
                 bmi088.acc[0], bmi088.acc[1], bmi088.acc[2],
                 bmi088.gyro[0], bmi088.gyro[1], bmi088.gyro[2]);
