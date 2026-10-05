@@ -57,6 +57,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     sp_middleware/io/bmi088/bmi088.cpp
     sp_middleware/tools/mahony/mahony.cpp # <- 添加这一行
     sp_middleware/tools/gimbal/gimbal.cpp # <- 添加这一行
+    sp_middleware/tools/math_tools/math_tools.cpp
     sp_middleware/motor/rm_motor/rm_motor.cpp # <- 添加这一行
     sp_middleware/tools/pid/pid.cpp # <- 添加这一行
     sp_middleware/io/can/can.cpp

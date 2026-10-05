@@ -17,7 +17,21 @@ static DBusSwitchMode get_switch(uint8_t raw)
 }
 
 DBus::DBus(UART_HandleTypeDef * huart, bool use_dma)
-: huart_(huart), use_dma_(use_dma), has_read_(false)
+: ch_rh(0.0f),
+  ch_rv(0.0f),
+  ch_lh(0.0f),
+  ch_lv(0.0f),
+  ch_lu(0.0f),
+  sw_r(DBusSwitchMode::DOWN),
+  sw_l(DBusSwitchMode::DOWN),
+  mouse{},
+  keys{},
+  keyboard_value(0),
+  huart_(huart),
+  use_dma_(use_dma),
+  has_read_(false),
+  last_read_ms_(0),
+  buff_{}
 {
 }
 
@@ -39,9 +53,6 @@ void DBus::request()
 void DBus::update(uint16_t size, uint32_t stamp_ms)
 {
   if (size != DBUS_BUFF_SIZE) return;
-
-  has_read_ = true;
-  last_read_ms_ = stamp_ms;
 
   // 遥控器解析
   float ch_rh = get_stick((buff_[0] | (buff_[1] << 8)) & 0x07ff);
@@ -69,6 +80,9 @@ void DBus::update(uint16_t size, uint32_t stamp_ms)
 
   // 鼠标数据异常
   if (std::abs(mouse_vx) > 1 || std::abs(mouse_vy) > 1 || std::abs(mouse_vs) > 1) return;
+
+  has_read_ = true;
+  last_read_ms_ = stamp_ms;
 
   /// 更新公有属性
 
