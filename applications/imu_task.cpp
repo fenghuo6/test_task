@@ -2,6 +2,8 @@
 #include "io/bmi088/bmi088.hpp"
 #include "tools/mahony/mahony.hpp"
 #include "io/plotter/plotter.hpp"
+#include "motor_plot_data.hpp"
+
 const float r_ab[3][3] = {{0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}};
 
 // C板
@@ -21,17 +23,25 @@ extern "C" void imu_task()
         bmi088.update();
         imu.update(bmi088.acc, bmi088.gyro);
 
-        // 使用调试(f5)查看bmi088和imu内部变量的变化
         print_cnt++;
-        if (print_cnt >= 50) // 50*1ms = 50ms，20Hz输出波形，避免串口压力过大
+        if (print_cnt >= 50) // 50*1ms = 50ms，20Hz输出波形
         {
             print_cnt = 0;
-            // 顺序：roll,pitch,yaw, ax,ay,az, gx,gy,gz 共9路
+            // 顺序：9路IMU；电机1角度/目标角/位置误差/目标速度/实际速度/力矩×100；
+            // 电机2目标速度/实际速度/力矩×100，共18路
             plotter.plot(
-
                 imu.roll, imu.pitch, imu.yaw,
                 bmi088.acc[0], bmi088.acc[1], bmi088.acc[2],
-                bmi088.gyro[0], bmi088.gyro[1], bmi088.gyro[2]);
+                bmi088.gyro[0], bmi088.gyro[1], bmi088.gyro[2],
+                motor_plot_data.motor1_angle,
+                motor_plot_data.motor1_target_angle,
+                motor_plot_data.motor1_position_error,
+                motor_plot_data.motor1_target_speed,
+                motor_plot_data.motor1_speed,
+                motor_plot_data.motor1_torque_x100,
+                motor_plot_data.motor2_target_speed,
+                motor_plot_data.motor2_speed,
+                motor_plot_data.motor2_torque_x100);
         }
         osDelay(1);
     }

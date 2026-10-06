@@ -14,10 +14,10 @@ extern "C" void buzzer_task(void const *argument)
 
   for (int i = 0; i < 3; i++)
   {
-   // buzzer.start();
-    //osDelay(100);
-    //buzzer.stop();
-  // osDelay(100);
+    buzzer.start();
+    osDelay(100);
+    buzzer.stop();
+    osDelay(100);
   }
 
   while (true)
