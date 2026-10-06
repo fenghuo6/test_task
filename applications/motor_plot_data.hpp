@@ -3,6 +3,7 @@
 
 struct MotorPlotData
 {
+  float yaw = 0.0f;
   float motor1_angle = 0.0f;
   float motor1_target_angle = 0.0f;
   float motor1_position_error = 0.0f;

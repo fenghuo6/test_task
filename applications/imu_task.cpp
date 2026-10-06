@@ -22,6 +22,7 @@ extern "C" void imu_task()
     {
         bmi088.update();
         imu.update(bmi088.acc, bmi088.gyro);
+        motor_plot_data.yaw = imu.yaw;
 
         print_cnt++;
         if (print_cnt >= 50) // 50*1ms = 50ms，20Hz输出波形
